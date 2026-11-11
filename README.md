@@ -1,116 +1,184 @@
-\# Online Status Checker
+# Online Status Checker
 
+A Java-based TCP socket programming project that monitors whether my phone is online or offline in real time.
 
+The system uses a heartbeat mechanism in which the phone periodically sends signals to a server running on my laptop. The server detects connection changes, records every status transition in an SQLite database, and displays the phone's current status on a live web dashboard.
 
-A Java TCP socket project that tracks whether my phone is online. The phone sends heartbeats to a server on my laptop, the server logs every status change to SQLite, and a live web page shows the phone's status.
+## How It Works
 
+The project consists of three main components:
 
+- **HeartbeatClient:** Runs on the Android phone through Termux. It establishes a TCP connection with the server on port `5000` and sends a heartbeat every 2 seconds. If the connection drops, it automatically attempts to reconnect.
+- **StatusServer:** Runs on the laptop and listens for incoming TCP connections. It marks the phone as **Online** when a connection is established and **Offline** when the connection closes or no heartbeat is received for 5 seconds.
+- **SQLite Database:** Every status transition is recorded in a database table named `status_log`, allowing previous online and offline events to be reviewed.
 
-\## How it works
+The server also hosts a lightweight HTTP web server on port `8080`. It serves `server/index.html`, which periodically checks the phone's current status every 2 seconds.
 
-\- `HeartbeatClient` (runs on the phone via Termux) sends a heartbeat every 2 seconds over TCP port 5000. It retries if the connection drops.
+## Web Dashboard and Visual Behaviour
 
-\- `StatusServer` marks the phone \*\*online\*\* on connect and \*\*offline\*\* if the connection closes or no heartbeat arrives for 5 seconds.
+The dashboard provides a visual representation of the phone's connection status through animated transitions.
 
-\- Each status change is stored in a SQLite table `status\_log`.
+### 1. Online Status
+- The dashboard displays a green screen.
+- The phone illustration smoothly straightens and faces the viewer.
+- The status indicator pulses like a heartbeat.
+- The background map zooms in from a broad overview to a closer view showing wider roads and larger building blocks.
 
-\- A built-in web server on port 8080 serves `server/index.html`, which checks the status every 2 seconds.
+### 2. Offline Status
+- The dashboard displays a red screen.
+- The phone illustration tilts backwards.
+- The heartbeat animation stops.
+- The background map zooms back out to its wider overview.
 
+### 3. Server Unavailable
+- The dashboard displays a grey screen when the server cannot be reached.
 
+**Important:** The background map is purely decorative. It is an abstract visual representation and does not display actual geographical information. The server does not collect, access, or track the phone's location.
 
-\## The web page
+## Web Dashboard Screenshots
 
-\- \*\*Online:\*\* green screen, the phone straightens to face you, the status dot beats like a heartbeat, and the background map zooms in from a wide overview to wide roads and large building blocks.
+The following screenshots demonstrate how the dashboard visually responds to changes in the phone's connection status.
 
-\- \*\*Offline:\*\* red screen, the phone tilts back, the dot stops, and the map zooms back out.
+### Phone Online
 
-\- \*\*Server down:\*\* grey screen.
+![Phone online](docs/online.png)
 
+### Phone Offline
 
+![Phone offline](docs/offline.png)
 
-The map is purely decorative. It is an abstract drawing, and the server never knows the phone's location.
+## Project Structure
 
-
-
-\## Project structure
-
-```
-
+```text
 status-checker/
-
-├── client/HeartbeatClient.java
-
+│
+├── client/
+│   └── HeartbeatClient.java
+│
 ├── server/
-
 │   ├── StatusServer.java
-
 │   ├── ViewLog.java
-
 │   ├── index.html
-
-│   └── lib/        (put the sqlite-jdbc jar here)
-
+│   └── lib/
+│       └── sqlite-jdbc.jar
+│
 ├── docs/
-
+│
 └── README.md
-
 ```
 
+## Requirements
 
+Before running the project, make sure the following are installed:
 
-\## Requirements
+- **Java 17** or later.
+- **SQLite JDBC Driver:** Download the `sqlite-jdbc` JAR file from the [Xerial SQLite JDBC Releases](https://github.com/xerial/sqlite-jdbc/releases) page.
+- Place the downloaded JAR file inside the `server/lib/` directory.
 
-\- Java 17
+## Running the Project
 
-\- The \[sqlite-jdbc](https://github.com/xerial/sqlite-jdbc/releases) jar (the plain `sqlite-jdbc-<version>.jar`), placed in `server/lib/`
+### Step 1: Start the Server
 
+Open a terminal inside the `server/` directory.
 
+On Windows, compile and run the server using:
 
-\## Run
-
-Server (from inside `server/`, so it can find `index.html`; Windows):
-
-```
-
+```bash
 javac StatusServer.java ViewLog.java
 
 java -cp ".;lib/sqlite-jdbc-<version>.jar" StatusServer
-
 ```
 
-Client (from `client/`):
+Replace `<version>` with the actual version of the downloaded SQLite JDBC JAR file.
 
-```
+### Step 2: Start the Client
 
+Open another terminal inside the `client/` directory.
+
+Compile the client:
+
+```bash
 javac HeartbeatClient.java
-
-java HeartbeatClient <server-ip>
-
 ```
 
-Open `http://localhost:8080` to see the status.
+Run the client by providing the server's IP address:
 
-View the log: `java -cp ".;lib/sqlite-jdbc-<version>.jar" ViewLog`
+```bash
+java HeartbeatClient <server-ip>
+```
 
+For an Android phone, run the compiled client through Termux, ensuring that the phone can reach the laptop over the network.
 
+### Step 3: Open the Web Dashboard
 
-(On Linux/Mac, use `:` instead of `;` in the classpath.)
+Open your browser and navigate to:
 
+```text
+http://localhost:8080
+```
 
+The dashboard will display the phone's current connection status.
 
-\## Concepts covered
+### Step 4: View the Status History
 
-TCP and sockets, client-server model, ports, heartbeat and timeout, NAT/private IPs, SQL and JDBC (PreparedStatement), event logging.
+To view previously recorded online and offline events, run:
 
+```bash
+java -cp ".;lib/sqlite-jdbc-<version>.jar" ViewLog
+```
 
+**Note:** On Linux and macOS, use `:` instead of `;` as the classpath separator.
 
-\## Testing
+## Concepts and Technologies Covered
 
-Normal connection, client stop, heartbeat timeout, database logging, web page, phone over Wi-Fi, and Wi-Fi drop and recovery (this found a bug, fixed with a reconnect loop). Full details are in `docs/`.
+This project demonstrates several fundamental networking and software development concepts:
 
+- TCP/IP communication and socket programming.
+- Client-server architecture.
+- Network ports and connection management.
+- Heartbeat mechanisms and timeout detection.
+- Automatic reconnection and error handling.
+- NAT, private IP addresses, and local network communication.
+- SQLite database integration.
+- JDBC and `PreparedStatement`.
+- Event logging and status tracking.
+- Basic HTTP server implementation.
+- HTML, CSS, JavaScript, and periodic status polling.
 
+## Testing and Verification
 
-\## Limitations
+The project has been tested under several scenarios to verify its functionality and reliability:
 
-One client at a time, local network only, no authentication. Multi-device support is planned.
+1. **Normal Connection:** Verified that the server correctly identifies the phone as online.
+2. **Client Shutdown:** Verified that stopping the client changes the status to offline.
+3. **Heartbeat Timeout:** Tested whether the server detects a missing heartbeat after the configured timeout.
+4. **Database Logging:** Confirmed that status transitions are recorded in SQLite.
+5. **Web Dashboard:** Verified that the dashboard updates automatically.
+6. **Phone over Wi-Fi:** Tested communication between the Android phone and laptop over the same Wi-Fi network.
+7. **Wi-Fi Disconnection and Recovery:** Tested connection loss and subsequent recovery. This test revealed a reconnection issue, which was resolved by implementing an automatic reconnect loop.
 
+Additional testing details and observations are documented in the `docs/` directory.
+
+## Current Limitations and Future Improvements
+
+### Current Limitations
+- Supports only one client connection at a time.
+- Designed for local network communication.
+- Does not currently implement authentication or encryption.
+- Requires the server to be running and accessible for monitoring to work.
+
+### Planned Improvements
+- Support multiple devices simultaneously.
+- Introduce client authentication.
+- Implement secure communication.
+- Add more detailed connection history and analytics.
+- Explore remote monitoring beyond the local network.
+
+---
+
+**Project Name:** Online Status Checker  
+**Language:** Java  
+**Networking:** TCP Sockets  
+**Database:** SQLite  
+**Frontend:** HTML, CSS, JavaScript  
+**Environment:** Java 17, Android (Termux), Windows/Linux/macOS
