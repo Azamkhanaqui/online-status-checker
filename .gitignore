@@ -1,0 +1,6 @@
+*.class
+*.db
+server/lib/*.jar
+.idea/
+*.iml
+out/
